@@ -1,18 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import { X, Printer } from 'lucide-react';
-import { PromoCode } from '../types';
-import { getStoredSettings } from '../services/storage';
+import { PromoCode, LabSettings } from '../types';
 import { formatArabicDate, getDiscountText, getScopeText } from '../services/whatsapp';
 
 interface VoucherPrintProps {
   promo: PromoCode | null;
+  settings: LabSettings;
   onClose: () => void;
 }
 
-export const VoucherPrint: React.FC<VoucherPrintProps> = ({ promo, onClose }) => {
+export const VoucherPrint: React.FC<VoucherPrintProps> = ({ promo, settings, onClose }) => {
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
-  const settings = getStoredSettings();
 
   useEffect(() => {
     if (!promo) return;
@@ -76,16 +75,16 @@ export const VoucherPrint: React.FC<VoucherPrintProps> = ({ promo, onClose }) =>
             <div className="text-center pb-4 border-b border-slate-200">
               <div className="flex items-center justify-center gap-2 mb-1.5">
                 <img 
-                  src="/src/assets/images/ramy_mokhtar_lab_logo_1793872542953.jpg" 
-                  alt="معامل رامي مختار" 
+                  src={settings.logoUrl || "/src/assets/images/ramy_mokhtar_lab_logo_1793872542953.jpg"} 
+                  alt={settings.labName} 
                   className="w-12 h-12 rounded-full border border-red-900/30 object-contain"
                 />
                 <div className="text-right">
                   <h3 className="text-base font-extrabold text-blue-950">
-                    معامل رامي مختار للتحاليل الطبية
+                    {settings.labName}
                   </h3>
                   <p className="text-[10px] text-slate-500 font-medium">
-                    الخط الساخن: 19876 · دقة التشخيص ورعايتكم أولويتنا
+                    الخط الساخن: {settings.hotline} · {settings.tagline}
                   </p>
                 </div>
               </div>

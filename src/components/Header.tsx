@@ -1,11 +1,14 @@
 import React from 'react';
-import { Plus, MessageSquare, ShieldCheck, BookOpen, Layers } from 'lucide-react';
+import { Plus, MessageSquare, ShieldCheck, BookOpen, Layers, Settings } from 'lucide-react';
 import { PWAInstallButton } from './PWAInstallButton';
+import { LabSettings } from '../types';
 
 interface HeaderProps {
   activeTab: 'codes' | 'redeem' | 'bulk' | 'guide';
   setActiveTab: (tab: 'codes' | 'redeem' | 'bulk' | 'guide') => void;
   onOpenCreateModal: () => void;
+  onOpenSettingsModal: () => void;
+  settings: LabSettings;
   activeCount: number;
 }
 
@@ -13,8 +16,12 @@ export const Header: React.FC<HeaderProps> = ({
   activeTab,
   setActiveTab,
   onOpenCreateModal,
+  onOpenSettingsModal,
+  settings,
   activeCount
 }) => {
+  const currentLogo = settings.logoUrl || '/src/assets/images/ramy_mokhtar_lab_logo_1793872542953.jpg';
+
   return (
     <header className="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-2xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -23,8 +30,8 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Zone 1: Single text element wordmark + Laboratory Logo */}
           <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
             <img 
-              src="/src/assets/images/ramy_mokhtar_lab_logo_1793872542953.jpg" 
-              alt="شعار معامل رامي مختار" 
+              src={currentLogo} 
+              alt={settings.labName} 
               className="w-10 h-10 rounded-full border border-red-900/20 object-contain shadow-2xs bg-white"
             />
             <a 
@@ -32,7 +39,7 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={(e) => { e.preventDefault(); setActiveTab('codes'); }}
               className="text-sm sm:text-base md:text-lg font-black tracking-tight text-blue-950 whitespace-nowrap shrink-0 hover:text-red-900 transition-colors"
             >
-              معامل رامي مختار
+              {settings.labName}
             </a>
           </div>
 
@@ -88,12 +95,22 @@ export const Header: React.FC<HeaderProps> = ({
               }`}
             >
               <BookOpen className="w-4 h-4 text-amber-700" />
-              <span>دليل التطبيق والتشغيل</span>
+              <span>دليل التشغيل</span>
             </button>
           </nav>
 
-          {/* Zone 3: Actions (Install App button + Create Code) */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          {/* Zone 3: Actions (Lab Settings + Install App + Create Code) */}
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+            <button
+              type="button"
+              onClick={onOpenSettingsModal}
+              title="تعديل بيانات المعمل وأرقام التواصل والفروع"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:text-blue-950 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer border border-slate-200"
+            >
+              <Settings className="w-3.5 h-3.5 text-slate-600" />
+              <span className="hidden sm:inline">بيانات المعمل</span>
+            </button>
+
             <PWAInstallButton variant="compact" />
 
             <button
@@ -131,6 +148,12 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
           >
             توليد جماعي
+          </button>
+          <button
+            onClick={onOpenSettingsModal}
+            className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 rounded whitespace-nowrap shrink-0"
+          >
+            ⚙️ بيانات المعمل
           </button>
           <button
             onClick={() => setActiveTab('guide')}

@@ -10,22 +10,23 @@ import {
   Sparkles
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { PromoCode } from '../types';
-import { redeemPromoCode, getStoredSettings } from '../services/storage';
+import { PromoCode, LabSettings } from '../types';
+import { redeemPromoCode } from '../services/storage';
 import { formatArabicDate, getDiscountText, getScopeText } from '../services/whatsapp';
 
 interface ReceptionRedeemProps {
   codes: PromoCode[];
+  settings: LabSettings;
   onCodeUpdated: () => void;
   onPrintVoucher: (code: PromoCode) => void;
 }
 
 export const ReceptionRedeem: React.FC<ReceptionRedeemProps> = ({
   codes,
+  settings,
   onCodeUpdated,
   onPrintVoucher
 }) => {
-  const settings = getStoredSettings();
   const [searchInput, setSearchInput] = useState('');
   const [selectedCode, setSelectedCode] = useState<PromoCode | null>(null);
   const [billAmount, setBillAmount] = useState<number | ''>('');
@@ -117,14 +118,14 @@ export const ReceptionRedeem: React.FC<ReceptionRedeemProps> = ({
       <div className="p-6 bg-gradient-to-r from-red-950 via-slate-900 to-blue-950 rounded-2xl text-white shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <img 
-            src="/src/assets/images/ramy_mokhtar_lab_logo_1793872542953.jpg" 
-            alt="Logo" 
+            src={settings.logoUrl || "/src/assets/images/ramy_mokhtar_lab_logo_1793872542953.jpg"} 
+            alt={settings.labName} 
             className="w-12 h-12 rounded-full border border-white/20 bg-white object-contain shadow-xs shrink-0"
           />
           <div>
             <div className="flex items-center gap-2 text-red-300 text-xs font-bold mb-1">
               <ShieldCheck className="w-4 h-4" />
-              <span>محطة موظفي الاستقبال والخزينة - معامل رامي مختار</span>
+              <span>محطة موظفي الاستقبال والخزينة - {settings.labName}</span>
             </div>
             <h1 className="text-xl font-bold">بوابة التحقق وصرف برومو كود المريض</h1>
             <p className="text-xs text-slate-300 mt-1">

@@ -1,37 +1,41 @@
 import React, { useState } from 'react';
 import { X, RefreshCw, Sparkles, MessageSquare, ShieldAlert } from 'lucide-react';
-import { PromoCode, DiscountType, ApplicableScope, SourceReason } from '../types';
-import { DEFAULT_LAB_SETTINGS, generateRandomCode } from '../services/whatsapp';
+import { PromoCode, DiscountType, ApplicableScope, SourceReason, LabSettings } from '../types';
+import { generateRandomCode } from '../services/whatsapp';
 
 interface PromoCodeGeneratorModalProps {
   isOpen: boolean;
   onClose: () => void;
+  settings: LabSettings;
   onSave: (code: PromoCode, openWhatsAppImmediately: boolean) => void;
 }
 
 export const PromoCodeGeneratorModal: React.FC<PromoCodeGeneratorModalProps> = ({
   isOpen,
   onClose,
+  settings,
   onSave
 }) => {
   if (!isOpen) return null;
 
-  // Form states
+  // Form states with dynamic lab defaults
   const [patientName, setPatientName] = useState('');
   const [patientPhone, setPatientPhone] = useState('');
   const [patientId, setPatientId] = useState('');
   const [sourceReason, setSourceReason] = useState<SourceReason>('welcome_new');
-  const [discountType, setDiscountType] = useState<DiscountType>('percentage');
-  const [discountValue, setDiscountValue] = useState<number>(20);
-  const [validityDays, setValidityDays] = useState<number>(7);
+  const [discountType, setDiscountType] = useState<DiscountType>(settings.defaultDiscountType || 'percentage');
+  const [discountValue, setDiscountValue] = useState<number>(settings.defaultDiscountValue || 20);
+  const [validityDays, setValidityDays] = useState<number>(settings.defaultValidityDays || 7);
   const [applicableScope, setApplicableScope] = useState<ApplicableScope>('all');
   const [scopeDetails, setScopeDetails] = useState('');
-  const [branch, setBranch] = useState(DEFAULT_LAB_SETTINGS.branches[0]);
+  const [branch, setBranch] = useState(settings.branches[0] || 'جميع الفروع');
   const [notes, setNotes] = useState('');
-  const [customCode, setCustomCode] = useState<string>(() => generateRandomCode('RM', 20));
+  const [customCode, setCustomCode] = useState<string>(() => 
+    generateRandomCode(settings.defaultPrefix || 'RM', settings.defaultDiscountValue || 20)
+  );
 
   const handleRegenerateCode = () => {
-    setCustomCode(generateRandomCode('RM', discountValue));
+    setCustomCode(generateRandomCode(settings.defaultPrefix || 'RM', discountValue));
   };
 
   const handleDiscountChange = (val: number, type: DiscountType) => {
@@ -80,7 +84,7 @@ export const PromoCodeGeneratorModal: React.FC<PromoCodeGeneratorModalProps> = (
         <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-red-950 via-slate-900 to-blue-950 text-white">
           <div className="flex items-center gap-3">
             <img 
-              src="/src/assets/images/ramy_mokhtar_lab_logo_1793872542953.jpg" 
+              src={settings.logoUrl || "/src/assets/images/ramy_mokhtar_lab_logo_1793872542953.jpg"} 
               alt="Logo" 
               className="w-10 h-10 rounded-full border border-white/20 bg-white object-contain"
             />
@@ -89,7 +93,7 @@ export const PromoCodeGeneratorModal: React.FC<PromoCodeGeneratorModalProps> = (
                 إنشاء برومو كود خصم متغير لمريض
               </h2>
               <p className="text-xs text-red-200">
-                معامل رامي مختار | توليد كود وصورة كارت الخصم للمريض
+                {settings.labName} | توليد كود وصورة كارت الخصم للمريض
               </p>
             </div>
           </div>
@@ -305,7 +309,7 @@ export const PromoCodeGeneratorModal: React.FC<PromoCodeGeneratorModalProps> = (
                 onChange={(e) => setBranch(e.target.value)}
                 className="w-full text-xs p-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-800 bg-white text-slate-800"
               >
-                {DEFAULT_LAB_SETTINGS.branches.map((b) => (
+                {settings.branches.map((b) => (
                   <option key={b} value={b}>{b}</option>
                 ))}
               </select>

@@ -65,4 +65,6 @@ export interface LabSettings {
   defaultValidityDays: number;
   defaultDiscountType: DiscountType;
   defaultDiscountValue: number;
+  logoUrl?: string;
+  address?: string;
 }

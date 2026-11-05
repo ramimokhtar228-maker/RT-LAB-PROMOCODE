@@ -6,19 +6,18 @@ import {
   Check, 
   MessageSquare, 
   ExternalLink, 
-  PhoneCall, 
   Image as ImageIcon, 
   Download, 
   Share2,
   Sparkles,
-  QrCode
+  Eye,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 import QRCode from 'qrcode';
-import { toPng } from 'html-to-image';
-import { PromoCode } from '../types';
+import { PromoCode, LabSettings } from '../types';
 import { 
   DEFAULT_TEMPLATES, 
-  DEFAULT_LAB_SETTINGS, 
   compileWhatsAppMessage, 
   buildWhatsAppLink, 
   cleanPhoneNumberForWhatsApp,
@@ -26,15 +25,18 @@ import {
   getDiscountText,
   getScopeText
 } from '../services/whatsapp';
+import { downloadPromoCard, generatePromoCardDataUrl, generatePromoCardCanvas } from '../services/cardCanvas';
 
 interface WhatsAppPreviewModalProps {
   promo: PromoCode | null;
+  settings: LabSettings;
   onClose: () => void;
   onMarkSent?: (id: string) => void;
 }
 
 export const WhatsAppPreviewModal: React.FC<WhatsAppPreviewModalProps> = ({
   promo,
+  settings,
   onClose,
   onMarkSent
 }) => {
@@ -45,19 +47,20 @@ export const WhatsAppPreviewModal: React.FC<WhatsAppPreviewModalProps> = ({
   const [customMessage, setCustomMessage] = useState<string>('');
   const [copiedText, setCopiedText] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedImage, setCopiedImage] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [imageDownloaded, setImageDownloaded] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
   const [activeViewTab, setActiveViewTab] = useState<'card_image' | 'whatsapp_text'>('card_image');
-
-  const cardRef = useRef<HTMLDivElement>(null);
+  const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
 
   // Sync custom message
   useEffect(() => {
     const tmpl = DEFAULT_TEMPLATES.find(t => t.id === selectedTemplateId) || DEFAULT_TEMPLATES[0];
-    const compiled = compileWhatsAppMessage(tmpl.content, promo, DEFAULT_LAB_SETTINGS);
+    const compiled = compileWhatsAppMessage(tmpl.content, promo, settings);
     setCustomMessage(compiled);
-  }, [selectedTemplateId, promo]);
+  }, [selectedTemplateId, promo, settings]);
 
   // Generate QR code for the voucher
   useEffect(() => {
@@ -69,9 +72,15 @@ export const WhatsAppPreviewModal: React.FC<WhatsAppPreviewModalProps> = ({
         light: '#ffffff'
       }
     })
-      .then(url => setQrCodeUrl(url))
+      .then(url => {
+        setQrCodeUrl(url);
+        // Pre-generate card preview image
+        generatePromoCardDataUrl(promo, settings, url)
+          .then(data => setPreviewDataUrl(data))
+          .catch(() => {});
+      })
       .catch(err => console.error(err));
-  }, [promo.code]);
+  }, [promo, settings]);
 
   const cleanPhone = cleanPhoneNumberForWhatsApp(promo.patientPhone);
   const waLink = buildWhatsAppLink(promo.patientPhone, customMessage);
@@ -96,24 +105,63 @@ export const WhatsAppPreviewModal: React.FC<WhatsAppPreviewModalProps> = ({
     }
   };
 
+  /**
+   * 100% Reliable Card Download using HTML5 2D Canvas engine
+   */
   const handleDownloadCardImage = async () => {
-    if (!cardRef.current) return;
     setIsGeneratingImage(true);
+    setDownloadError(null);
     try {
-      const dataUrl = await toPng(cardRef.current, {
-        cacheBust: true,
-        pixelRatio: 2.5
-      });
-      const link = document.createElement('a');
-      link.download = `كارت_خصم_معامل_رامي_مختار_${promo.code}.png`;
-      link.href = dataUrl;
-      link.click();
-      setImageDownloaded(true);
-      setTimeout(() => setImageDownloaded(false), 3000);
-    } catch (err) {
+      const res = await downloadPromoCard(promo, settings, qrCodeUrl);
+      if (res.success) {
+        setImageDownloaded(true);
+        setPreviewDataUrl(res.dataUrl);
+        setTimeout(() => setImageDownloaded(false), 3500);
+      }
+    } catch (err: unknown) {
       console.error('Failed to generate voucher card image', err);
+      // Fallback: create dataUrl and open in new tab
+      try {
+        const dataUrl = await generatePromoCardDataUrl(promo, settings, qrCodeUrl);
+        setPreviewDataUrl(dataUrl);
+        const w = window.open('');
+        if (w) {
+          w.document.write(`<title>كارت خصم معامل رامي مختار - ${promo.code}</title><img src="${dataUrl}" style="max-width:100%;height:auto;display:block;margin:auto;" />`);
+        }
+        setImageDownloaded(true);
+      } catch (fallbackErr) {
+        setDownloadError('تعذر حفظ الصورة تلقائياً، يمكنك النقر بالزر الأيمن على الصورة واختيار حفظ الصورة');
+      }
     } finally {
       setIsGeneratingImage(false);
+    }
+  };
+
+  /**
+   * Copy Image to Clipboard for direct Ctrl+V pasting into WhatsApp Web
+   */
+  const handleCopyImageToClipboard = async () => {
+    try {
+      const canvas = await generatePromoCardCanvas(promo, settings, qrCodeUrl);
+      canvas.toBlob(async (blob) => {
+        if (!blob) return;
+        try {
+          if (navigator.clipboard && navigator.clipboard.write) {
+            await navigator.clipboard.write([
+              new ClipboardItem({ 'image/png': blob })
+            ]);
+            setCopiedImage(true);
+            setTimeout(() => setCopiedImage(false), 2500);
+          } else {
+            alert('خاصية نسخ الصورة للحافظة غير مدعومة في هذا المتصفح، يرجى استخدام زر تنزيل الصورة.');
+          }
+        } catch {
+          // If clipboard.write is restricted in iframe, trigger download
+          handleDownloadCardImage();
+        }
+      }, 'image/png');
+    } catch (err) {
+      console.error('Clipboard copy error', err);
     }
   };
 
@@ -124,6 +172,8 @@ export const WhatsAppPreviewModal: React.FC<WhatsAppPreviewModalProps> = ({
     }
   };
 
+  const currentLogo = settings.logoUrl || '/src/assets/images/ramy_mokhtar_lab_logo_1793872542953.jpg';
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[94vh] flex flex-col overflow-hidden border border-slate-200">
@@ -132,16 +182,16 @@ export const WhatsAppPreviewModal: React.FC<WhatsAppPreviewModalProps> = ({
         <div className="flex items-center justify-between px-6 py-3.5 bg-gradient-to-r from-red-950 via-slate-900 to-blue-950 text-white">
           <div className="flex items-center gap-3">
             <img 
-              src="/src/assets/images/ramy_mokhtar_lab_logo_1793872542953.jpg" 
-              alt="معامل رامي مختار" 
+              src={currentLogo} 
+              alt={settings.labName} 
               className="w-10 h-10 rounded-full border border-white/20 bg-white object-contain shadow-xs"
             />
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-sm sm:text-base font-bold text-white">
-                  معامل رامي مختار | إرسال كود الخصم وصورة الكارت للمريض
+                  {settings.labName} | إرسال كود الخصم وصورة الكارت للمريض
                 </h2>
-                <span className="text-[10px] bg-red-700 text-white font-mono px-2 py-0.5 rounded-full">
+                <span className="text-[10px] bg-red-700 text-white font-mono px-2 py-0.5 rounded-full font-bold">
                   {promo.code}
                 </span>
               </div>
@@ -151,6 +201,8 @@ export const WhatsAppPreviewModal: React.FC<WhatsAppPreviewModalProps> = ({
                 <span className="font-mono tabular-nums text-slate-300">{promo.patientPhone || 'بدون رقم'}</span>
                 <span aria-hidden="true">·</span>
                 <span className="text-red-300 font-bold">{getDiscountText(promo)}</span>
+                <span aria-hidden="true">·</span>
+                <span>الخط الساخن: <strong className="text-amber-300 font-mono">{settings.hotline}</strong></span>
               </div>
             </div>
           </div>
@@ -192,12 +244,21 @@ export const WhatsAppPreviewModal: React.FC<WhatsAppPreviewModalProps> = ({
           <div className="flex items-center gap-2">
             <button
               type="button"
+              onClick={handleCopyImageToClipboard}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg transition-colors cursor-pointer shadow-2xs"
+            >
+              {copiedImage ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+              <span>{copiedImage ? 'تم نسخ الصورة!' : 'نسخ الصورة للحافظة (Ctrl+V)'}</span>
+            </button>
+
+            <button
+              type="button"
               onClick={handleDownloadCardImage}
               disabled={isGeneratingImage}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-red-900 bg-red-100/80 hover:bg-red-200 border border-red-300 rounded-lg transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white bg-red-800 hover:bg-red-900 active:bg-red-950 rounded-lg transition-colors cursor-pointer shadow-xs"
             >
-              <Download className="w-3.5 h-3.5 text-red-700" />
-              <span>{imageDownloaded ? 'تم تنزيل الصورة!' : 'تحميل صورة الكارت لإرفاقها بالواتساب'}</span>
+              <Download className="w-3.5 h-3.5" />
+              <span>{imageDownloaded ? '✓ تم تنزيل كارت الخصم!' : isGeneratingImage ? 'جارٍ المعالجة...' : 'تنزيل صورة الكارت (PNG) الآن'}</span>
             </button>
           </div>
         </div>
@@ -211,122 +272,114 @@ export const WhatsAppPreviewModal: React.FC<WhatsAppPreviewModalProps> = ({
             {activeViewTab === 'card_image' ? (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <div className="text-xs text-slate-700 font-semibold flex items-center gap-1.5">
+                  <div className="text-xs text-slate-800 font-bold flex items-center gap-1.5">
                     <Sparkles className="w-4 h-4 text-red-700" />
-                    <span>بطاقة الخصم الرقمية المجهزة للمريض (جاهزة للحفظ والإرسال عبر واتساب):</span>
+                    <span>بطاقة الخصم الرسمية للمريض (جاهزة للإرفاق بالواتساب):</span>
                   </div>
-                  <span className="text-[11px] text-slate-500 font-mono">
-                    دقة عالية 1080p
+                  <span className="text-[11px] text-emerald-700 font-bold flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>دقة عالية 1200×750 بكسل</span>
                   </span>
                 </div>
 
-                {/* THE OFFICIAL RAMY MOKHTAR LAB DISCOUNT CARD */}
-                <div className="flex justify-center p-2 bg-slate-100 rounded-2xl border border-slate-200">
-                  <div
-                    ref={cardRef}
-                    className="w-full max-w-md bg-white rounded-2xl overflow-hidden shadow-lg border border-slate-300 relative text-slate-900 font-sans"
-                    style={{ direction: 'rtl' }}
-                  >
-                    {/* Top Ribbon in Dark Red & Navy */}
-                    <div className="bg-gradient-to-r from-red-900 via-red-950 to-blue-950 p-4 text-white flex items-center justify-between border-b-2 border-amber-400">
-                      <div className="flex items-center gap-2.5">
-                        <img 
-                          src="/src/assets/images/ramy_mokhtar_lab_logo_1793872542953.jpg" 
-                          alt="Logo" 
-                          className="w-12 h-12 rounded-full border-2 border-white/40 bg-white object-contain"
-                        />
-                        <div>
-                          <h3 className="text-sm font-black tracking-wide text-white leading-tight">
-                            معامل رامي مختار للتحاليل الطبية
-                          </h3>
-                          <p className="text-[10px] text-red-200 font-medium">
-                            RAMY MOKHTAR LABORATORIES · الخط الساخن: 19876
-                          </p>
-                        </div>
-                      </div>
+                {downloadError && (
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-amber-700 shrink-0" />
+                    <span>{downloadError}</span>
+                  </div>
+                )}
 
-                      <div className="text-left font-mono text-[10px] bg-red-800/80 px-2.5 py-1 rounded-md border border-red-700">
-                        كارت مريض رسمي
-                      </div>
-                    </div>
-
-                    {/* Card Inner Body */}
-                    <div className="p-4 space-y-3 bg-gradient-to-b from-white via-slate-50 to-red-50/20">
-                      
-                      {/* Patient & Code Main Row */}
-                      <div className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200">
-                        <div>
-                          <div className="text-[10px] text-slate-500">اسم المريض المحترم:</div>
-                          <div className="text-base font-extrabold text-slate-900">
-                            {promo.patientName}
+                {/* VISUAL CARD PREVIEW */}
+                <div className="flex flex-col items-center justify-center p-2 bg-slate-100 rounded-2xl border border-slate-200">
+                  {previewDataUrl ? (
+                    <img
+                      src={previewDataUrl}
+                      alt="كارت خصم المريض"
+                      className="w-full max-w-lg rounded-xl shadow-md border border-slate-300"
+                    />
+                  ) : (
+                    /* Fallback HTML Preview while canvas renders */
+                    <div
+                      className="w-full max-w-md bg-white rounded-2xl overflow-hidden shadow-lg border border-slate-300 text-slate-900 font-sans"
+                      dir="rtl"
+                    >
+                      <div className="bg-gradient-to-r from-red-900 via-red-950 to-blue-950 p-4 text-white flex items-center justify-between border-b-2 border-amber-400">
+                        <div className="flex items-center gap-2.5">
+                          <img 
+                            src={currentLogo} 
+                            alt="Logo" 
+                            className="w-12 h-12 rounded-full border-2 border-white/40 bg-white object-contain"
+                          />
+                          <div>
+                            <h3 className="text-sm font-black text-white leading-tight">
+                              {settings.labName}
+                            </h3>
+                            <p className="text-[10px] text-red-200 font-medium">
+                              الخط الساخن: {settings.hotline} · {settings.tagline}
+                            </p>
                           </div>
-                          {promo.patientPhone && (
-                            <div className="text-[11px] text-slate-600 font-mono" dir="ltr">
-                              {promo.patientPhone}
+                        </div>
+                        <span className="text-[10px] bg-red-800/80 px-2 py-1 rounded text-white font-mono">
+                          كارت مريض رسمي
+                        </span>
+                      </div>
+
+                      <div className="p-4 space-y-3 bg-gradient-to-b from-white via-slate-50 to-red-50/20">
+                        <div className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200">
+                          <div>
+                            <div className="text-[10px] text-slate-500">اسم المريض:</div>
+                            <div className="text-base font-extrabold text-slate-900">{promo.patientName}</div>
+                            {promo.patientPhone && (
+                              <div className="text-[11px] text-slate-600 font-mono" dir="ltr">{promo.patientPhone}</div>
+                            )}
+                          </div>
+                          <div className="text-left">
+                            <div className="text-[10px] text-slate-500">كود الخصم:</div>
+                            <div className="text-lg font-black font-mono tracking-wider text-red-900 bg-red-100/70 px-2.5 py-0.5 rounded border border-red-200">
+                              {promo.code}
                             </div>
+                          </div>
+                        </div>
+
+                        <div className="bg-gradient-to-r from-blue-950 to-blue-900 text-white rounded-xl p-3 flex items-center justify-between shadow-xs">
+                          <div>
+                            <div className="text-[10px] text-blue-200">قيمة الخصم المستحق:</div>
+                            <div className="text-xs text-white font-medium mt-0.5">{getScopeText(promo)}</div>
+                          </div>
+                          <div className="text-2xl font-black font-mono text-amber-300">
+                            {getDiscountText(promo)}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between gap-3 pt-1 text-[11px] text-slate-600">
+                          <div>
+                            <div>صالح حتى: <strong className="font-mono text-red-700">{formatArabicDate(promo.expiresAt)}</strong></div>
+                            <div>الفروع: <strong>{promo.branch}</strong></div>
+                          </div>
+                          {qrCodeUrl && (
+                            <img src={qrCodeUrl} alt="QR" className="w-16 h-16 border rounded p-0.5 bg-white shadow-2xs" />
                           )}
                         </div>
-
-                        <div className="text-left">
-                          <div className="text-[10px] text-slate-500">كود الخصم المعتمد:</div>
-                          <div className="text-lg font-black font-mono tracking-wider text-red-900 bg-red-100/70 px-2.5 py-0.5 rounded border border-red-200">
-                            {promo.code}
-                          </div>
-                        </div>
                       </div>
 
-                      {/* Huge Discount Banner */}
-                      <div className="bg-gradient-to-r from-blue-950 to-blue-900 text-white rounded-xl p-3 flex items-center justify-between shadow-xs">
-                        <div>
-                          <div className="text-[10px] text-blue-200">قيمة الخصم المستحق على الفاتورة:</div>
-                          <div className="text-xs text-white font-medium mt-0.5">
-                            {getScopeText(promo)}
-                          </div>
-                        </div>
-                        <div className="text-2xl font-black font-mono text-amber-300 tabular-nums">
-                          {getDiscountText(promo)}
-                        </div>
+                      <div className="bg-slate-900 text-slate-300 px-4 py-1.5 text-[10px] flex items-center justify-between">
+                        <span>{settings.tagline}</span>
+                        <span className="font-mono text-amber-400">{settings.labName}</span>
                       </div>
-
-                      {/* Details & QR Code */}
-                      <div className="flex items-center justify-between gap-3 pt-1">
-                        <div className="space-y-1 text-[11px] text-slate-600 flex-1">
-                          <div className="flex items-center gap-1">
-                            <span className="font-semibold text-slate-800">صالح حتى:</span>
-                            <span className="font-mono font-bold text-red-700">{formatArabicDate(promo.expiresAt)}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <span className="font-semibold text-slate-800">الفروع:</span>
-                            <span className="text-slate-700">{promo.branch}</span>
-                          </div>
-                          <div className="text-[10px] text-slate-400 mt-1">
-                            * يُبرز هذا الكارت لموظف الاستقبال قبل سحب العينة لتطبيق الخصم.
-                          </div>
-                        </div>
-
-                        {qrCodeUrl && (
-                          <div className="text-center shrink-0">
-                            <img src={qrCodeUrl} alt="QR" className="w-16 h-16 border border-slate-200 rounded p-0.5 bg-white shadow-2xs" />
-                            <span className="text-[8px] text-slate-400 block font-mono">سكان للتحقق</span>
-                          </div>
-                        )}
-                      </div>
-
                     </div>
-
-                    {/* Bottom Bar */}
-                    <div className="bg-slate-900 text-slate-300 px-4 py-2 text-[10px] flex items-center justify-between border-t border-slate-200">
-                      <span>دقة التشخيص ورعايتكم أولويتنا</span>
-                      <span className="font-mono text-amber-400">معامل رامي مختار</span>
-                    </div>
-                  </div>
+                  )}
                 </div>
 
                 {/* Instructions helper */}
                 <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-950 flex items-start gap-2">
                   <Share2 className="w-4 h-4 text-blue-700 shrink-0 mt-0.5" />
                   <div className="leading-relaxed">
-                    <strong>نصيحة إرسال الواتساب:</strong> اضغط <em>"تحميل صورة الكارت"</em> أولاً، ثم اضغط <em>"إرسال عبر واتساب"</em>، وعند فتح شات المريض قم بسحب وإفلات صورة الكارت أو إرفاقها ليتسلم المريض كارت الخصم الصوري مع الرسالة النصية!
+                    <strong>طريقة إرسال الكارت عبر واتساب:</strong>
+                    <ol className="list-decimal list-inside space-y-0.5 mt-1 text-slate-700">
+                      <li>اضغط زر <strong>"تنزيل صورة الكارت (PNG) الآن"</strong> ليتم حفظها فوراً على جهازك.</li>
+                      <li>اضغط <strong>"إرسال عبر واتساب للمريض"</strong> بالأسفل لفتح المحادثة.</li>
+                      <li>قم بسحب وإفلات الصورة أو الضغط على رمز الإرفاق 📎 لاختيار الصورة وإرسالها للمريض مع الرسالة.</li>
+                    </ol>
                   </div>
                 </div>
 
@@ -358,7 +411,7 @@ export const WhatsAppPreviewModal: React.FC<WhatsAppPreviewModalProps> = ({
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-semibold text-slate-700">
-                      نص الرسالة المعد للإرسال:
+                      نص الرسالة المعد للإرسال (محدث ببيانات وهاتف المعمل):
                     </label>
                     <span className="text-[11px] text-slate-500 font-mono">
                       {customMessage.length} حرف
@@ -415,13 +468,13 @@ export const WhatsAppPreviewModal: React.FC<WhatsAppPreviewModalProps> = ({
             <div className="bg-[#075e54] text-white px-4 py-3 flex items-center justify-between shadow-xs">
               <div className="flex items-center gap-2.5">
                 <img 
-                  src="/src/assets/images/ramy_mokhtar_lab_logo_1793872542953.jpg" 
+                  src={currentLogo} 
                   alt="Avatar" 
                   className="w-9 h-9 rounded-full bg-white object-contain border border-white/30"
                 />
                 <div>
-                  <div className="text-xs font-bold leading-tight">معامل رامي مختار للتحاليل</div>
-                  <div className="text-[10px] text-emerald-100">نشط الآن عبر واتساب الأعمال</div>
+                  <div className="text-xs font-bold leading-tight">{settings.labName}</div>
+                  <div className="text-[10px] text-emerald-100">واتساب الأعمال · الخط الساخن {settings.hotline}</div>
                 </div>
               </div>
               <div className="text-[11px] bg-[#128c7e] px-2 py-0.5 rounded text-white font-mono">
@@ -448,11 +501,11 @@ export const WhatsAppPreviewModal: React.FC<WhatsAppPreviewModalProps> = ({
               <div className="max-w-[92%] mr-auto bg-[#dcf8c6] text-slate-800 text-xs p-3 rounded-lg shadow-2xs relative leading-relaxed whitespace-pre-wrap font-sans border border-[#cbebb5]">
                 <div className="flex items-center gap-2 pb-2 mb-2 border-b border-emerald-200/80">
                   <img 
-                    src="/src/assets/images/ramy_mokhtar_lab_logo_1793872542953.jpg" 
+                    src={currentLogo} 
                     alt="Logo" 
                     className="w-5 h-5 rounded-full object-contain"
                   />
-                  <span className="font-bold text-[11px] text-emerald-950">معامل رامي مختار للتحاليل الطبية</span>
+                  <span className="font-bold text-[11px] text-emerald-950">{settings.labName}</span>
                 </div>
                 {customMessage}
                 <div className="flex items-center justify-end gap-1 mt-1 text-[10px] text-slate-500 font-mono">

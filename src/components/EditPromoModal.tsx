@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, Edit3, ShieldAlert, Calendar, User, Phone, Tag, Building2, FileText } from 'lucide-react';
-import { PromoCode, DiscountType, ApplicableScope, PromoCodeStatus } from '../types';
-import { DEFAULT_LAB_SETTINGS } from '../services/whatsapp';
+import { PromoCode, DiscountType, ApplicableScope, PromoCodeStatus, LabSettings } from '../types';
 
 interface EditPromoModalProps {
   promo: PromoCode | null;
   isOpen: boolean;
+  settings: LabSettings;
   onClose: () => void;
   onSave: (updatedCode: PromoCode) => void;
 }
@@ -13,6 +13,7 @@ interface EditPromoModalProps {
 export const EditPromoModal: React.FC<EditPromoModalProps> = ({
   promo,
   isOpen,
+  settings,
   onClose,
   onSave
 }) => {
@@ -310,7 +311,7 @@ export const EditPromoModal: React.FC<EditPromoModalProps> = ({
                 onChange={(e) => setBranch(e.target.value)}
                 className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800"
               >
-                {DEFAULT_LAB_SETTINGS.branches.map((b) => (
+                {settings.branches.map((b) => (
                   <option key={b} value={b}>{b}</option>
                 ))}
               </select>

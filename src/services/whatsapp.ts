@@ -1,6 +1,6 @@
-import { PromoCode, WhatsAppTemplate } from '../types';
+import { PromoCode, WhatsAppTemplate, LabSettings } from '../types';
 
-export const DEFAULT_LAB_SETTINGS = {
+export const DEFAULT_LAB_SETTINGS: LabSettings = {
   labName: 'معامل رامي مختار للتحاليل الطبية',
   tagline: 'دقة التشخيص.. ورعايتكم أولويتنا',
   hotline: '19876',
@@ -15,8 +15,10 @@ export const DEFAULT_LAB_SETTINGS = {
   ],
   defaultPrefix: 'RM',
   defaultValidityDays: 7,
-  defaultDiscountType: 'percentage' as const,
-  defaultDiscountValue: 20
+  defaultDiscountType: 'percentage',
+  defaultDiscountValue: 20,
+  logoUrl: '/src/assets/images/ramy_mokhtar_lab_logo_1793872542953.jpg',
+  address: 'ميدان المساحة - الدقي - الجيزة'
 };
 
 export const DEFAULT_TEMPLATES: WhatsAppTemplate[] = [
@@ -197,7 +199,7 @@ export function getScopeText(promo: Pick<PromoCode, 'applicableScope' | 'scopeDe
 export function compileWhatsAppMessage(
   templateContent: string,
   promo: PromoCode,
-  settings: typeof DEFAULT_LAB_SETTINGS = DEFAULT_LAB_SETTINGS
+  settings: LabSettings = DEFAULT_LAB_SETTINGS
 ): string {
   const discountText = getDiscountText(promo);
   const scopeText = getScopeText(promo);

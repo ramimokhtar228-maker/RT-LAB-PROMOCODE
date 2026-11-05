@@ -5,9 +5,11 @@ import {
   saveMultiplePromoCodes, 
   updatePromoCode,
   deletePromoCode, 
-  resetToSampleData 
+  resetToSampleData,
+  getStoredSettings,
+  saveStoredSettings
 } from './services/storage';
-import { PromoCode } from './types';
+import { PromoCode, LabSettings } from './types';
 import { Header } from './components/Header';
 import { StatsCards } from './components/StatsCards';
 import { CodeListTable } from './components/CodeListTable';
@@ -18,24 +20,27 @@ import { ReceptionRedeem } from './components/ReceptionRedeem';
 import { VoucherPrint } from './components/VoucherPrint';
 import { EducationalGuide } from './components/EducationalGuide';
 import { BulkGeneratorModal } from './components/BulkGeneratorModal';
+import { LabSettingsModal } from './components/LabSettingsModal';
 import { PWAInstallButton } from './components/PWAInstallButton';
 import { 
   Plus, 
   RotateCcw, 
   Layers, 
   BookOpen,
-  Sparkles,
+  Settings,
   GitBranch
 } from 'lucide-react';
 
 export default function App() {
   const [codes, setCodes] = useState<PromoCode[]>([]);
+  const [settings, setSettings] = useState<LabSettings>(() => getStoredSettings());
   const [activeTab, setActiveTab] = useState<'codes' | 'redeem' | 'bulk' | 'guide'>('codes');
   const [currentFilter, setCurrentFilter] = useState<string>('all');
   
   // Modals
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isBulkOpen, setIsBulkOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [editingPromo, setEditingPromo] = useState<PromoCode | null>(null);
   const [activeWhatsAppPromo, setActiveWhatsAppPromo] = useState<PromoCode | null>(null);
   const [activePrintPromo, setActivePrintPromo] = useState<PromoCode | null>(null);
@@ -43,10 +48,16 @@ export default function App() {
   // Initial load
   useEffect(() => {
     setCodes(getStoredCodes());
+    setSettings(getStoredSettings());
   }, []);
 
   const handleRefreshCodes = () => {
     setCodes(getStoredCodes());
+  };
+
+  const handleSaveSettings = (newSettings: LabSettings) => {
+    saveStoredSettings(newSettings);
+    setSettings(newSettings);
   };
 
   const handleSaveNewCode = (newCode: PromoCode, openWhatsAppImmediately: boolean) => {
@@ -84,7 +95,7 @@ export default function App() {
     }
   };
 
-  const handleQuickRedeemFromTable = (code: PromoCode) => {
+  const handleQuickRedeemFromTable = () => {
     setActiveTab('redeem');
   };
 
@@ -93,11 +104,13 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
       
-      {/* Top Navbar */}
+      {/* Top Navbar with Lab Settings trigger */}
       <Header
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onOpenCreateModal={() => setIsCreateOpen(true)}
+        onOpenSettingsModal={() => setIsSettingsOpen(true)}
+        settings={settings}
         activeCount={activeCodesCount}
       />
 
@@ -115,15 +128,15 @@ export default function App() {
             <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
                 <img 
-                  src="/src/assets/images/ramy_mokhtar_lab_logo_1793872542953.jpg" 
-                  alt="شعار معامل رامي مختار" 
+                  src={settings.logoUrl || "/src/assets/images/ramy_mokhtar_lab_logo_1793872542953.jpg"} 
+                  alt={settings.labName} 
                   className="w-16 h-16 rounded-full border-2 border-red-900/30 object-contain shadow-xs bg-white shrink-0"
                 />
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 text-red-800 text-xs font-bold">
-                    <span>معامل رامي مختار للتحاليل الطبية</span>
+                    <span>{settings.labName}</span>
                     <span aria-hidden="true">·</span>
-                    <span className="text-blue-900">نظام برومو كود الخصم وإرسال صورة الكارت والواتساب</span>
+                    <span className="text-blue-900">الخط الساخن: {settings.hotline}</span>
                   </div>
                   <h1 className="text-xl font-extrabold text-blue-950">
                     لوحة تحكم وتوليد أكواد الخصم المتغيرة للمرضى
@@ -135,6 +148,16 @@ export default function App() {
               </div>
 
               <div className="flex items-center gap-2 self-stretch lg:self-auto flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setIsSettingsOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer border border-slate-200"
+                  title="تعديل اسم المعمل والشعار وأرقام الهواتف والفروع"
+                >
+                  <Settings className="w-3.5 h-3.5 text-slate-600" />
+                  <span>بيانات المعمل</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => setIsBulkOpen(true)}
@@ -213,6 +236,7 @@ export default function App() {
         {activeTab === 'redeem' && (
           <ReceptionRedeem
             codes={codes}
+            settings={settings}
             onCodeUpdated={handleRefreshCodes}
             onPrintVoucher={(code) => setActivePrintPromo(code)}
           />
@@ -238,7 +262,7 @@ export default function App() {
             </div>
 
             <div className="bg-blue-50/50 p-6 rounded-2xl border border-blue-200 text-xs space-y-3">
-              <h3 className="font-bold text-blue-900 text-sm">💡 نصائح لزيادة تفاعل المرضى في معامل رامي مختار:</h3>
+              <h3 className="font-bold text-blue-900 text-sm">💡 نصائح لزيادة تفاعل المرضى في {settings.labName}:</h3>
               <p className="text-slate-700 leading-relaxed">
                 1. <strong>إرفاق صورة الكارت:</strong> إرسال بطاقة الخصم كصورة PNG عبر واتساب يزيد من ثقة واهتمام المريض بنسبة 60% مقارنة بالنص المجرد.
               </p>
@@ -259,16 +283,22 @@ export default function App() {
 
       </main>
 
-      {/* Footer */}
+      {/* Footer with dynamic lab contacts */}
       <footer className="border-t border-slate-200 bg-white py-4 mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
           <div className="flex items-center gap-2">
-            <strong className="text-blue-950 font-bold">معامل رامي مختار للتحاليل الطبية</strong>
+            <strong className="text-blue-950 font-bold">{settings.labName}</strong>
             <span aria-hidden="true">·</span>
-            <span className="text-red-900 font-semibold">نظام برومو كود الخصم وإرسال صورة الكارت والواتساب</span>
+            <span className="text-red-900 font-semibold">{settings.tagline || 'نظام برومو كود الخصم وإرسال صورة الكارت والواتساب'}</span>
           </div>
-          <div className="text-[11px] text-slate-400">
-            الخط الساخن: 19876 · دقة التشخيص ورعايتكم أولويتنا
+          <div className="text-[11px] text-slate-500">
+            الخط الساخن: <span className="font-mono font-bold text-red-900">{settings.hotline}</span>
+            {settings.whatsappSupportNumber && (
+              <> · خدمة العملاء وواتساب: <span className="font-mono font-bold text-blue-900">{settings.whatsappSupportNumber}</span></>
+            )}
+            {settings.address && (
+              <> · <span className="text-slate-600">{settings.address}</span></>
+            )}
           </div>
         </div>
       </footer>
@@ -276,6 +306,7 @@ export default function App() {
       {/* MODAL 1: Create Single Promo Code */}
       <PromoCodeGeneratorModal
         isOpen={isCreateOpen}
+        settings={settings}
         onClose={() => setIsCreateOpen(false)}
         onSave={handleSaveNewCode}
       />
@@ -284,6 +315,7 @@ export default function App() {
       <EditPromoModal
         isOpen={!!editingPromo}
         promo={editingPromo}
+        settings={settings}
         onClose={() => setEditingPromo(null)}
         onSave={handleUpdateCode}
       />
@@ -291,12 +323,14 @@ export default function App() {
       {/* MODAL 3: WhatsApp Preview & 1-Click Send with Card Image */}
       <WhatsAppPreviewModal
         promo={activeWhatsAppPromo}
+        settings={settings}
         onClose={() => setActiveWhatsAppPromo(null)}
       />
 
       {/* MODAL 4: Printable Voucher with QR Code */}
       <VoucherPrint
         promo={activePrintPromo}
+        settings={settings}
         onClose={() => setActivePrintPromo(null)}
       />
 
@@ -305,6 +339,14 @@ export default function App() {
         isOpen={isBulkOpen}
         onClose={() => setIsBulkOpen(false)}
         onSaveBulk={handleSaveBulkCodes}
+      />
+
+      {/* MODAL 6: Lab Settings Modal (Edit Lab Name, Logo, Contacts, Branches) */}
+      <LabSettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        settings={settings}
+        onSaveSettings={handleSaveSettings}
       />
 
     </div>
