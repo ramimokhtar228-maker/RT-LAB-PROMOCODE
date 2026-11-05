@@ -1,5 +1,6 @@
 import React from 'react';
 import { Plus, MessageSquare, ShieldCheck, BookOpen, Layers } from 'lucide-react';
+import { PWAInstallButton } from './PWAInstallButton';
 
 interface HeaderProps {
   activeTab: 'codes' | 'redeem' | 'bulk' | 'guide';
@@ -17,10 +18,10 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-2xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between gap-8 h-16">
+        <div className="flex items-center justify-between gap-4 sm:gap-8 h-16">
           
           {/* Zone 1: Single text element wordmark + Laboratory Logo */}
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
             <img 
               src="/src/assets/images/ramy_mokhtar_lab_logo_1793872542953.jpg" 
               alt="شعار معامل رامي مختار" 
@@ -29,9 +30,9 @@ export const Header: React.FC<HeaderProps> = ({
             <a 
               href="#codes" 
               onClick={(e) => { e.preventDefault(); setActiveTab('codes'); }}
-              className="text-base sm:text-lg font-black tracking-tight text-blue-950 whitespace-nowrap shrink-0 hover:text-red-900 transition-colors"
+              className="text-sm sm:text-base md:text-lg font-black tracking-tight text-blue-950 whitespace-nowrap shrink-0 hover:text-red-900 transition-colors"
             >
-              معامل رامي مختار للتحاليل
+              معامل رامي مختار
             </a>
           </div>
 
@@ -91,14 +92,16 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           </nav>
 
-          {/* Zone 3: 1 primary action */}
-          <div className="flex items-center gap-3 shrink-0">
+          {/* Zone 3: Actions (Install App button + Create Code) */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <PWAInstallButton variant="compact" />
+
             <button
               onClick={onOpenCreateModal}
-              className="inline-flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-bold text-white bg-red-800 hover:bg-red-900 active:bg-red-950 rounded-xl shadow-xs transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+              className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold text-white bg-red-800 hover:bg-red-900 active:bg-red-950 rounded-xl shadow-xs transition-colors whitespace-nowrap shrink-0 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>إنشاء كود لمريض</span>
+              <span>كود جديد +</span>
             </button>
           </div>
         </div>

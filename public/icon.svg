@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#881337" />
+      <stop offset="50%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#1e3a8a" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.3" />
+    </filter>
+  </defs>
+
+  <!-- Background Rounded Rect -->
+  <rect width="512" height="512" rx="112" fill="url(#grad)" />
+  
+  <!-- Subtle Outer Border -->
+  <rect x="12" y="12" width="488" height="488" rx="100" fill="none" stroke="#ffffff" stroke-opacity="0.15" stroke-width="4" />
+
+  <!-- Center Circle Shield -->
+  <circle cx="256" cy="230" r="140" fill="#ffffff" filter="url(#shadow)" />
+
+  <!-- Stylized Flask & Microscope Graphics in Dark Red & Navy -->
+  <g transform="translate(166, 140)">
+    <!-- Flask Outline in Red -->
+    <path d="M70,30 L110,30 L110,60 L145,120 A20,20 0 0,1 128,150 L52,150 A20,20 0 0,1 35,120 L70,60 Z" 
+          fill="#881337" opacity="0.9" />
+    <!-- Liquid in Flask -->
+    <path d="M50,110 L130,110 L128,145 L52,145 Z" fill="#e11d48" />
+    <circle cx="90" cy="125" r="6" fill="#ffffff" opacity="0.8" />
+    <circle cx="105" cy="135" r="4" fill="#ffffff" opacity="0.8" />
+    <circle cx="75" cy="135" r="3" fill="#ffffff" opacity="0.8" />
+
+    <!-- Microscope Arm in Navy Blue -->
+    <path d="M120,40 L135,15 L155,25 L140,50 Z" fill="#1e3a8a" />
+    <rect x="115" y="45" width="25" height="40" rx="4" transform="rotate(25 127 65)" fill="#0f172a" />
+    <circle cx="145" cy="85" r="14" fill="#1e3a8a" />
+    <path d="M145,95 Q165,115 140,140 L130,140 Q150,115 135,95 Z" fill="#1e3a8a" />
+    <rect x="110" y="140" width="45" height="10" rx="3" fill="#0f172a" />
+  </g>
+
+  <!-- Lab Name in Arabic Typography -->
+  <text x="256" y="420" text-anchor="middle" font-family="'Cairo', system-ui, sans-serif" font-size="34" font-weight="900" fill="#ffffff" letter-spacing="1">
+    معامل رامي مختار
+  </text>
+  <text x="256" y="460" text-anchor="middle" font-family="'Cairo', system-ui, sans-serif" font-size="20" font-weight="600" fill="#fca5a5" letter-spacing="2">
+    للتحاليل الطبية · بروموكود
+  </text>
+</svg>

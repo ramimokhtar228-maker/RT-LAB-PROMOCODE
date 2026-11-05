@@ -20,16 +20,16 @@ export const EducationalGuide: React.FC = () => {
     <div className="max-w-4xl mx-auto space-y-8 pb-12">
       
       {/* Hero Banner */}
-      <div className="bg-gradient-to-br from-teal-900 via-teal-800 to-slate-900 rounded-3xl p-8 text-white shadow-lg">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-800/80 text-teal-200 text-xs font-semibold mb-4 border border-teal-700">
+      <div className="bg-gradient-to-br from-red-950 via-slate-900 to-blue-950 rounded-3xl p-8 text-white shadow-lg">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-800/80 text-red-200 text-xs font-semibold mb-4 border border-red-700">
           <BookOpen className="w-4 h-4" />
-          <span>الدليل الشامل لمعامل رامي مختار للتحاليل الطبية</span>
+          <span>الدليل التشغيلي والتطبيقي لمعامل رامي مختار</span>
         </div>
         <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight mb-3">
-          كيف تنشئ برومو كود خصم متغير للمرضى وترسله عبر واتساب؟
+          دليل تشغيل برومو كود الخصم وإرسال صورة الكارت وتثبيت التطبيق
         </h1>
-        <p className="text-sm text-teal-100 max-w-2xl leading-relaxed">
-          دليل عملي تفصيلي يوضح كيفية تصميم أكواد الخصم المتغيرة لكل مريض على حدة (Dynamic Unique Promo Codes)، وربطها برقم الهاتف، وتفعيل الإرسال بنقرة واحدة عبر واتساب، وكيفية فحصها وصرفها عند شباك الاستقبال.
+        <p className="text-sm text-red-100 max-w-2xl leading-relaxed">
+          دليل عملي تفصيلي يوضح كيفية تصميم أكواد الخصم المتغيرة لكل مريض، وإرسال صورة الكارت والرسالة عبر واتساب، وتثبيت البرنامج كتطبيق PWA أصلي على الهاتف والكمبيوتر.
         </p>
       </div>
 
